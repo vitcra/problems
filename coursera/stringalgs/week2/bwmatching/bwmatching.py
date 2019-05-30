@@ -1,6 +1,34 @@
 # python3
 import sys
 
+def build_first_occurence_dict(firstCol):
+  first_occurence = dict()
+
+  for i, char in enumerate(firstCol):
+    if char in first_occurence:
+      continue
+    else:
+      first_occurence[char] = i
+  
+  return first_occurence
+
+def build_count_occurence_dict(lastCol, firstOccurenceDict):
+  count_occurence = dict()
+  characters = firstOccurenceDict.keys()
+
+  for char in characters:
+    count_occurence[char] = [0]
+
+  # index first col
+  for char in lastCol:
+    for dc in count_occurence:
+      j = count_occurence[dc][-1]
+      if dc == char:
+        j += 1
+      count_occurence[dc].append(j)
+  
+  return count_occurence
+
 
 def PreprocessBWT(bwt):
   """
@@ -30,14 +58,17 @@ def CountOccurrences(pattern, bwt, starts, occ_counts_before):
 
 if __name__ == '__main__':
   bwt = sys.stdin.readline().strip()
-  pattern_count = int(sys.stdin.readline().strip())
-  patterns = sys.stdin.readline().strip().split()
-  # Preprocess the BWT once to get starts and occ_count_before.
-  # For each pattern, we will then use these precomputed values and
-  # spend only O(|pattern|) to find all occurrences of the pattern
-  # in the text instead of O(|pattern| + |text|).  
-  starts, occ_counts_before = PreprocessBWT(bwt)
-  occurrence_counts = []
-  for pattern in patterns:
-    occurrence_counts.append(CountOccurrences(pattern, bwt, starts, occ_counts_before))
-  print(' '.join(map(str, occurrence_counts)))
+  # pattern_count = int(sys.stdin.readline().strip())
+  # patterns = sys.stdin.readline().strip().split()
+
+  # starts, occ_counts_before = PreprocessBWT(bwt)
+  # occurrence_counts = []
+  # for pattern in patterns:
+  #   occurrence_counts.append(CountOccurrences(pattern, bwt, starts, occ_counts_before))
+  # print(' '.join(map(str, occurrence_counts)))
+
+  first_col = sorted(bwt)
+  first_occurence = build_first_occurence_dict(first_col)
+  count_occurence = build_count_occurence_dict(bwt, first_occurence)
+  print(first_occurence)
+  print(count_occurence)

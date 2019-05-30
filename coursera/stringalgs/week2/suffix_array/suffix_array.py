@@ -4,6 +4,11 @@ import sys
 STYPE = ord('S')
 LTYPE = ord('L')
 
+def show_suffix_array(arr, pos=None):
+  print(" ".join("%02d" % each for each in arr))
+  if pos is not None:
+    print(" ".join("^^" if each == pos else "  " for each in range(len(arr))))
+
 def build_type_array(text):
   L = len(text)
   type_array = bytearray(L+1)
@@ -79,31 +84,33 @@ def induce_sort_l(text, suffixArray, bucketSizes, typemap):
   bucketHeads = find_bucket_heads(bucketSizes)
 
   for i in range(len(suffixArray)):
-    if suffixArray[i] != -1:
+    if suffixArray[i] == -1:
       continue
     
     j = suffixArray[i] - 1
-    if j<0 or typemap[j] != LTYPE:
+    if j < 0 or typemap[j] != LTYPE:
       continue
     
     char = text[j]
     suffixArray[bucketHeads[char]] = j
-    bucketHeads[j] += 1
+    bucketHeads[char] += 1
+    #show_suffix_array(suffixArray, i)
 
 def induce_sort_s(text, suffixArray, bucketSizes, typemap):
   bucketTails = find_bucket_tails(bucketSizes)
 
   for i in reversed(range(len(suffixArray))):
-    if suffixArray[i] != -1:
+    if suffixArray[i] == -1:
       continue
     
     j = suffixArray[i] - 1
-    if typemap[j] != STYPE:
+    if j < 0 or typemap[j] != STYPE:
       continue
     
     char = text[j]
     suffixArray[bucketTails[char]] = j
-    bucketTails[j] -= 1
+    bucketTails[char] -= 1
+    #show_suffix_array(suffixArray, i)
 
 def lms_substrings_are_equal(offsetA, offsetB, text, typemap):
   L = len(text)
@@ -112,8 +119,8 @@ def lms_substrings_are_equal(offsetA, offsetB, text, typemap):
   
   i = 0
   while True:
-    aIsLms = is_lms_char(offsetA, typemap)
-    bIsLms = is_lms_char(offsetB, typemap)
+    aIsLms = is_lms_char(offsetA + i, typemap)
+    bIsLms = is_lms_char(offsetB + i, typemap)
 
     if (i>0 and aIsLms and bIsLms):
       return True
@@ -136,9 +143,12 @@ def summarise_suffix_array(text, suffixArray, typemap):
   lastLmsSuffixOffset = suffixArray[0]
   lmsNames[lastLmsSuffixOffset] = currentName
 
-  for i in range(1, L+1):
+  for i in range(1, len(suffixArray)):
     suffixOffset = suffixArray[i]
-
+    
+    if suffixOffset == -1:
+      continue
+    
     if not is_lms_char(suffixOffset, typemap):
       continue
     
@@ -148,28 +158,32 @@ def summarise_suffix_array(text, suffixArray, typemap):
     lastLmsSuffixOffset = suffixOffset
     lmsNames[lastLmsSuffixOffset] = currentName
 
-  summarySuffixOffset = []
+  summarySuffixOffsets = []
   summaryText = []
   for i, name in enumerate(lmsNames):
     if name == -1:
       continue
     
-    summarySuffixOffset.append(i)
+    summarySuffixOffsets.append(i)
     summaryText.append(name)
 
   summaryAlphabetSize = currentName + 1
 
-  return summaryText, summaryAlphabetSize, summarySuffixOffset
+  return summaryText, summaryAlphabetSize, summarySuffixOffsets
 
-def make_suffix_array_by_induced_sorting(text, alphabetSize):
-  typemap = build_type_array(text)
-  bucketSizes = find_bucket_sizes(text, alphabetSize)
-  guessedSuffixArray = guess_lms_sort(test, bucketSizes, typemap)
-  induce_sort_l(text, guessedSuffixArray, bucketSizes, typemap)
-  induce_sort_s(text, guessedSuffixArray, bucketSizes, typemap)
+def accurate_lms_sort(text, bucketSizes, typemap, summarySuffixArray, summarySuffixOffsets):
+  L = len(text)
+  suffixOffsets = [-1] * (L + 1)
 
-  summaryString, summaryAlphabetSize, summarySuffixOffsets = \
-         summariseSuffixArray(string, guessedSuffixArray, typemap)
+  bucketTails = find_bucket_tails(bucketSizes)
+  for i in reversed(range(2, len(summarySuffixArray))):
+    textIndex = summarySuffixOffsets[summarySuffixArray[i]]
+    char = text[textIndex]
+    suffixOffsets[bucketTails[char]] = textIndex
+    bucketTails[char] -= 1
+  
+  suffixOffsets[0] = L
+  return suffixOffsets
 
 def make_summary_suffix_array(summaryText, summaryAlphabetSize):
   L = len(summaryText)
@@ -186,6 +200,24 @@ def make_summary_suffix_array(summaryText, summaryAlphabetSize):
   
   return summarySuffixArray
 
+def make_suffix_array_by_induced_sorting(text, alphabetSize):
+  typemap = build_type_array(text)
+  bucketSizes = find_bucket_sizes(text, alphabetSize)
+  guessedSuffixArray = guess_lms_sort(text, bucketSizes, typemap)
+  induce_sort_l(text, guessedSuffixArray, bucketSizes, typemap)
+  induce_sort_s(text, guessedSuffixArray, bucketSizes, typemap)
+
+  summaryText, summaryAlphabetSize, summarySuffixOffsets = \
+         summarise_suffix_array(text, guessedSuffixArray, typemap)
+  
+  summarySuffixArray = make_summary_suffix_array(summaryText, summaryAlphabetSize)
+
+  suffixArray = accurate_lms_sort(text, bucketSizes, typemap, summarySuffixArray, summarySuffixOffsets)
+  induce_sort_l(text, suffixArray, bucketSizes, typemap)
+  induce_sort_s(text, suffixArray, bucketSizes, typemap)
+
+  return suffixArray
+
     
 
 def build_suffix_array(text):
@@ -196,11 +228,14 @@ def build_suffix_array(text):
   in text where the i-th lexicographically smallest
   suffix of text starts.
   """
-  result = []
+  result = make_suffix_array_by_induced_sorting(text, 256)
   # Implement this function yourself
   return result
 
 
 if __name__ == '__main__':
-  text = sys.stdin.readline().strip()
+  s = sys.stdin.readline().strip()
+  text = bytearray()
+  text.extend(map(ord, s[:-1]))
+  #text = b'cabbage'
   print(" ".join(map(str, build_suffix_array(text))))
