@@ -59,10 +59,11 @@ def suffix_array_to_suffix_tree(sa, lcp, text):
         tree[prevNode][kdepth] = lcpPrev
         tree[curNode][kedges][edge][kend] = left_start
         
-        e = len(tree[prevNode][kedges])
+        e = 0
         N += 1
-        tree[N] = [[], prevNode, e, tree[prevNode][kdepth] + L - left_start]
-        tree[prevNode][kedges].append([N, left_start, L])
+        tree[N] = [tree[prevNode][kedges], prevNode, e, tree[prevNode][kdepth] + edge_end - left_start]
+        tree[prevNode][kedges] = []
+        tree[prevNode][kedges].append([N, left_start, edge_end])
 
         # right
         right_start = start + lcpPrev
@@ -74,6 +75,8 @@ def suffix_array_to_suffix_tree(sa, lcp, text):
       
       if i < L - 1:
         lcpPrev = lcp[i]
+      #print('#', i, start, text[start:])
+      #print(tree)
 
     return tree
 
@@ -109,7 +112,6 @@ if __name__ == '__main__':
     """
     #print(tree)
     stack = [(0, 0)]
-    result_edges = []
     while len(stack) > 0:
       (node, edge_index) = stack[-1]
       stack.pop()
