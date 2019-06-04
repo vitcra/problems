@@ -45,7 +45,7 @@ def suffix_array_to_suffix_tree(sa, lcp, text):
         new_start = start + lcpPrev
         e = len(tree[curNode][kedges])
         N += 1
-        tree[N] = [[], curNode, e, L - new_start]
+        tree[N] = [[], curNode, e, tree[curNode][kdepth] + L - new_start]
         tree[curNode][kedges].append([N, new_start, L])
         curNode = N
       else:
