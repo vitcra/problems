@@ -1,6 +1,13 @@
 # python3
 import sys
 
+kedges = 0
+kparent = 1
+knedge = 2
+kdepth = 3
+kchild = 0
+kstart = 1
+kend = 2
 
 def suffix_array_to_suffix_tree(sa, lcp, text):
     """
@@ -19,8 +26,55 @@ def suffix_array_to_suffix_tree(sa, lcp, text):
     (corresponding to the root node), and it should be the first edge in the list (because
     it has the smallest first character of all edges outgoing from the root).
     """
-    tree = {}
-    # Implement this function yourself
+
+    L = len(text)
+    tree = {0:[[], None, None, 0]}
+    N = 0
+    lcpPrev = 0
+    curNode = 0
+    prevNode = 0
+
+    for i, start in enumerate(sa):
+      while tree[curNode][kdepth] > lcpPrev:
+        prevNode = curNode
+        curNode = tree[curNode][kparent]
+      
+      offset = lcpPrev - tree[curNode][kdepth]
+      if offset == 0:
+        # Create new node
+        new_start = start + lcpPrev
+        e = len(tree[curNode][kedges])
+        N += 1
+        tree[N] = [[], curNode, e, L - new_start]
+        tree[curNode][kedges].append([N, new_start, L])
+        curNode = N
+      else:
+        # Split
+        edge = tree[prevNode][knedge]
+        edge_start = tree[curNode][kedges][edge][kstart]
+        edge_end = tree[curNode][kedges][edge][kend]
+
+        # left
+        left_start = edge_start + offset
+        tree[prevNode][kdepth] = lcpPrev
+        tree[curNode][kedges][edge][kend] = left_start
+        
+        e = len(tree[prevNode][kedges])
+        N += 1
+        tree[N] = [[], prevNode, e, tree[prevNode][kdepth] + L - left_start]
+        tree[prevNode][kedges].append([N, left_start, L])
+
+        # right
+        right_start = start + lcpPrev
+        e += 1
+        N += 1
+        tree[N] = [[], prevNode, e, tree[prevNode][kdepth] + L - right_start]
+        tree[prevNode][kedges].append([N, right_start, L])
+        curNode = N
+      
+      if i < L - 1:
+        lcpPrev = lcp[i]
+
     return tree
 
 
@@ -53,15 +107,16 @@ if __name__ == '__main__':
             OutputEdges(tree, edge[0]);
     
     """
+    #print(tree)
     stack = [(0, 0)]
     result_edges = []
     while len(stack) > 0:
       (node, edge_index) = stack[-1]
       stack.pop()
-      if not node in tree:
+      if not node in tree or not tree[node][kedges]:
         continue
-      edges = tree[node]
+      edges = tree[node][kedges]
       if edge_index + 1 < len(edges):
         stack.append((node, edge_index + 1))
-      print("%d %d" % (edges[edge_index][1], edges[edge_index][2]))
-      stack.append((edges[edge_index][0], 0))
+      print("%d %d" % (edges[edge_index][kstart], edges[edge_index][kend]))
+      stack.append((edges[edge_index][kchild], 0))
